@@ -54,16 +54,40 @@ class Asgard():
             ("terminal",""),
             ("memory",""),
             ("tipousuario",""),
-            ("tiposucursal","")
+            ("tiposucursal",""),
+            ("simplificado","")
         ]
         self.crud("INSERT INTO parametros VALUES(?,?)",params)
 
-        self.ejecutar("CREATE TABLE IF NOT EXISTS consecutivos(idsucursal,consecutivo,consecutivo6,consecutivo7,ec3,ec7,devoluciones)")
+        self.ejecutar("CREATE TABLE IF NOT EXISTS unidades(id integer primary key autoincrement,nombre varchar(45),simbolo varchar(45),idtipo int,idunidad int,cantidad varchar(100))")
+
+        params = [
+            (1,"Unidad","un",3,0,"1"),
+            (2,"Kilogramos","kg",1,3,"1000"),
+            (3,"Gramos","g",1,0,"1"),
+            (4,"Miligramos","mg",1,3,"0.001"),
+            (6,"Litros","L",1,0,"1"),
+            (7,"Mililitros","ml",1,6,"0.001"),
+            (8,"Metros","m",1,0,"1"),
+            (9,"Centimetro","cm",1,8,"0.01"),
+            (10,"Minutos","min",2,0,"1"),
+            (11,"Horas","hrs",2,0,"60"),
+            (12,"Semanas","semanas",2,0,"168"),
+            (13,"Cajas","cajas",3,1,"0"),
+            (14,"Centímetro Cúbico","cc",4,0,"1"),
+            (15,"Libra","lb",1,3,"454"),
+            (16,"Onza","oz",4,3,"28"),
+            (17,"Cucharada Sopera","c.s.",1,3,"15"),
+            (18,"Cucharadita Postre","c/c",1,3,"5"),
+        ]
+        self.crud("INSERT INTO unidades VALUES(?,?,?,?,?,?)",params)
+
+        self.ejecutar("CREATE TABLE IF NOT EXISTS consecutivos(idsucursal int,consecutivo,consecutivo6,consecutivo7,ec3,ec7,devoluciones)")
 
         self.ejecutar("CREATE TABLE IF NOT EXISTS clientes(id integer primary key autoincrement,nombre varchar(150),cedula varchar(20),plazo int,credito decimal(20,2),idServer int,idsucursal int)")
         self.ejecutar("CREATE table if not exists correos(id integer primary key autoincrement,correo varchar(64),idtabla int, idfila int)")
 
-        self.ejecutar("CREATE TABLE IF NOT EXISTS productos(id integer primary key autoincrement,nombre varchar(150),codigo varchar(64),iva decimal(3,1),cabys varchar(20),venta decimal(23,5),costo decimal(23,5),timv int,ivi bool,idserver int,idsucursal int)")
+        self.ejecutar("CREATE TABLE IF NOT EXISTS productos(id integer primary key autoincrement,nombre varchar(150),codigo varchar(64),iva decimal(3,1),cabys varchar(20),venta decimal(23,5),costo decimal(23,5),timv int,ivi bool,idserver int,idsucursal int,idunidad int)")
         self.ejecutar("CREATE TABLE IF NOT EXISTS inventario(id integer primary key autoincrement, idproducto int,cantidad decimal(12,2),idinventario int)")
         self.ejecutar("CREATE TABLE IF NOT EXISTS last_price(id integer primary key autoincrement,idproducto int,precio decimal(23,5),idcliente int, fecha varchar(20))")
 
@@ -160,9 +184,10 @@ class Asgard():
                         product['ivi'],
                         product['id'],
                         self.page.client_storage.get('idsucursal'),
+                        product['idunidad'],
                         ) )
                 if len(lista_prod):
-                    self.crud("INSERT INTO productos(nombre,codigo,iva,cabys,venta,costo,timv,ivi,idserver,idsucursal) VALUES(?,?,?,?,?,?,?,?,?,?)",lista_prod)
+                    self.crud("INSERT INTO productos(nombre,codigo,iva,cabys,venta,costo,timv,ivi,idserver,idsucursal,idunidad) VALUES(?,?,?,?,?,?,?,?,?,?,?)",lista_prod)
             
             add_inv = []
             act_inv = []
@@ -234,9 +259,10 @@ class Asgard():
                 self.crud("INSERT INTO clientes(nombre,cedula,plazo,credito,idServer,idsucursal) VALUES(?,?,?,?,?,?)",lista_clie)
 
             rs = self.getRs(lista['correos'],1)
-            lista_corr = []
+            add_crr = []
+            act_crr = []
             for correo in rs:
-                correo['idfila'] = self.ejecutar('select id from clientes where idserver = '+stock['idfila']+';')[0][0]
+                correo['idfila'] = self.ejecutar('select id from clientes where idserver = '+correo['idfila']+';')[0][0]
 
                 if correo['accion'] == '1':
                     add_crr.append((
@@ -265,15 +291,28 @@ class Asgard():
             self.alert(rs['msj'],'red')
         else:
             rs = self.getRs(lista['rs'],1)
+            print(rs)
 
     async def load(self):
         await self.loadProductos()
         await self.loadClientes()
-        tipo_sucursal = self.ejecutar('select value from parametros where id = "tiposucursal"')[0][0][0]
-        if(tipo_sucursal == 1):
+        tipo_usuario = int(self.ejecutar('select value from parametros where id = "tipousuario"')[0][0])
+        if(tipo_usuario == 4):
             await self.loadRutas()
 
         self.alert('Actualización Completa','green')
 
     def run(self,fn):
         asyncio.run(fn)
+
+    def loadMain(self):
+        tuser = int(self.ejecutar('select value from parametros where id = "tipousuario"')[0][0])
+        salida = 'facturacion'
+        if tuser == 4: #AGENTE
+            salida = 'rutas'
+        elif tuser == 8: #BODEGUERO
+            salida = 'bodega'
+        elif tuser == 10: #RESTAURANTE
+            salida = 'restaurante'
+
+        return salida

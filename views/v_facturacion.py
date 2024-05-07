@@ -5,6 +5,56 @@ def Facturacion(page):
 	api = Asgard(page,ft)
 	totalizar = [];
 
+	def cambiar_cantidad(e):
+		ln = e.control.data['linea']
+		valor = e.control.value
+		if not valor.replace('.','').isnumeric():
+			valor = 0
+		total = float(totalizar[ln][0]['punitario'])*float(valor)
+		totalizar[ln][0]['txt'].value = total
+		totalizar[ln][0]['txt'].update()
+
+	def changeSpecial(e):
+		pr = page.client_storage.get('param')
+		if pr != 8:
+			getFactTitulo(8,1)
+		elif page.client_storage.get("fact_user") > 0:
+			getFactTitulo(1,1)
+		else:
+			getFactTitulo(7,1)
+
+	def cargarProducto(e):
+		idprod = e.control.leading.data['idproducto']
+		lista_search_prod.controls = []
+		lista_search_prod.update()
+		prod_info = api.ejecutar('select codigo,nombre,venta,idunidad,iva,cabys,ivi from productos where id = '+str(idprod))
+
+		unidades = api.ejecutar('select id,simbolo,cantidad from unidades where id = '+str(prod_info[0][3])+' union select id,nombre,cantidad from unidades where idunidad = '+str(prod_info[0][3])+' union select id,nombre,cantidad from unidades where idunidad = (select idunidad from unidades where id = '+str(prod_info[0][3])+') and idunidad <> 0 order by cantidad')
+
+		for unidad in unidades:
+			add_unidad.options.append(ft.dropdown.Option(text=unidad[1],key=unidad[0]))
+
+		add_unidad.value = prod_info[0][3]
+
+		add_codigo.value = prod_info[0][0]
+		add_descp.value = prod_info[0][1]
+		add_precio.value = '{:,.2f}'.format(float(prod_info[0][2]))
+		add_cantidad.focus()
+		modal_addline.update()
+		column_add.scroll_to(offset=500, duration=1000)
+
+	def searchByName(e):
+		if add_descp.value == '':
+			lista_search_prod.controls = []
+			lista_search_prod.update()
+			return False
+		lista_search_prod.controls = []
+		productos = api.ejecutar('select id,nombre from productos where nombre like "%'+add_descp.value+'%" limit 10')
+		for prod in productos:
+			lista_search_prod.controls.append(ft.ListTile(leading=ft.Text(f'{prod[1]}',expand=1,data={'idproducto':prod[0]}),content_padding=ft.padding.only(top=1),on_click=cargarProducto))
+		
+		lista_search_prod.update()
+
 	def creditoOn(e):
 		if int(e.control.value) == 2:
 			plazo.visible=True
@@ -16,6 +66,11 @@ def Facturacion(page):
 	def addLine(e):
 		page.dialog = modal_addline
 		modal_addline.open = True
+		add_codigo.value = ''
+		add_descp.value = ''
+		add_cantidad.value = 1
+		add_precio.value = '0.00'
+		add_unidad.options = []
 		page.update()
 		add_codigo.focus()
 
@@ -23,15 +78,15 @@ def Facturacion(page):
 		lineas = len(totalizar)
 
 		if lineas == 0:
-			lista_productos.controls = []
+			lista_productos.content.controls = []
+
+		total = float(add_cantidad.value)*float(add_precio.value.replace(',',''))
+
+		text_tot = ft.TextField(label='Total',value=total,read_only=True,border=ft.InputBorder.UNDERLINE,text_align=ft.TextAlign.RIGHT)
 
 		totalizar.append(lineas)
 		totalizar[lineas] = []	
-		totalizar[lineas].append({'punitario':add_precio.value,'cantidad':add_cantidad.value})
-
-		lineas += 1;
-
-		total = float(add_cantidad.value)*float(add_precio.value)
+		totalizar[lineas].append({'punitario':add_precio.value.replace(',',''),'cantidad':add_cantidad.value,'txt':text_tot})
 
 		newline = ft.Row([
 		 		ft.Container(
@@ -42,13 +97,6 @@ def Facturacion(page):
 		 			padding = ft.padding.only(right=20),
 		 			width=page.width*0.5,
 		 			content=ft.Row(alignment=ft.MainAxisAlignment.END,controls=[
-		 					ft.IconButton(
-								icon=ft.icons.EDIT_ROUNDED,
-								icon_color="blue400",
-								icon_size=20,
-								tooltip="Editar Línea",
-							),
-
 							ft.IconButton(
 								icon=ft.icons.DELETE_ROUNDED,
 								icon_color="red400",
@@ -58,25 +106,26 @@ def Facturacion(page):
 		 					])
 		 			),
 		 		])
-		lista_productos.controls.append(newline)
+		lista_productos.content.controls.append(newline)
 
 		newline = ft.Row([
 		 		ft.Container(
 		 			width=page.width*0.3,
-		 			content=ft.TextField(label='Precio Unitario',value=add_precio.value,read_only=True,border=ft.InputBorder.UNDERLINE)
+		 			content=ft.TextField(label='Precio Unitario',value=add_precio.value,read_only=True,border=ft.InputBorder.UNDERLINE,data={'linea':lineas})
 		 			),
 		 		ft.Container(
 		 			width=page.width*0.3,
-		 			content=ft.TextField(label='Cantidad',value=add_cantidad.value)
+		 			content=ft.TextField(label='Cantidad',value=add_cantidad.value,data={'linea':lineas},on_change=cambiar_cantidad)
 		 			),
 		 		ft.Container(
 		 			width=page.width*0.3,
-		 			content=ft.TextField(label='Total',value=total,read_only=True,border=ft.InputBorder.UNDERLINE)
+		 			content=text_tot,
 		 			),
 		 	])
 
-		lista_productos.controls.append(newline)
+		lista_productos.content.controls.append(newline)
 
+		lineas += 1;
 		totLineas.value = lineas
 		totFactura.value = '{:,.2f}'.format(float(totFactura.value.replace(',',''))+total)
 
@@ -203,6 +252,9 @@ def Facturacion(page):
 		elif param == 7:
 			tipoFactura.value = 'Tiquete N°'
 			param = 6;
+		elif param == 8:
+			tipoFactura.value = 'Especial N°'
+			param = 7
 		
 		consecutivo.value = str(api.ejecutar('Select consecutivo'+str(param)+'+1 from consecutivos where idsucursal = '+str(page.client_storage.get('sucursal')))[0][0]).zfill(10)
 
@@ -212,13 +264,15 @@ def Facturacion(page):
 
 
 	text_cliente = ft.TextField(
-		label="Nombre o Cédula del Cliente",
-		width=page.width*0.7,
+		label="Cliente",
+		width=page.width*0.68,
 		autofocus=True,
 		on_change=mostrarLista
 	)
 
 	lista_clientes = ft.ListView(expand=1, spacing=0,horizontal=False,item_extent=30, padding=0,divider_thickness=5,controls=[])
+
+	lista_search_prod = ft.ListView(expand=True,expand_loose=True,item_extent=30,spacing=0, padding=0, auto_scroll=True,divider_thickness=5)
 
 	autocomplete = ft.Container(
 		width=page.width*0.7,
@@ -262,12 +316,12 @@ def Facturacion(page):
 	totLineas = ft.Text(len(totalizar));
 	totFactura = ft.Text('0.00')
 
-	lista_productos = ft.Column(scroll=ft.ScrollMode.AUTO,controls=[
+	lista_productos = ft.Container(expand=True,expand_loose=True,content=ft.Column(scroll=ft.ScrollMode.AUTO,controls=[
 		ft.Row(alignment=ft.MainAxisAlignment.CENTER,
 			controls=[
 				ft.Text('No Hay Líneas Ingresadas')
 			])
-	])
+	]))
 
 	text_cedula = ft.TextField(label='Ingrese el Número de Cédula',on_submit=getSic,width=page.width*0.8)
 	text_correo = ft.TextField(label='Correo',border=ft.InputBorder.UNDERLINE,on_submit=cargarCorreo)
@@ -326,31 +380,31 @@ def Facturacion(page):
 		],
 		actions_alignment=ft.MainAxisAlignment.END,
 	)
-	add_codigo=ft.TextField(label='Código',border=ft.InputBorder.UNDERLINE,value="05")	
-	add_descp=ft.TextField(label='Descripcion',border=ft.InputBorder.UNDERLINE,value="PRUEBA")
-	add_precio=ft.TextField(label='Precio',border=ft.InputBorder.UNDERLINE,value=1000)
+	add_codigo=ft.TextField(label='Código',border=ft.InputBorder.UNDERLINE)	
+	add_descp=ft.TextField(label='Descripcion',border=ft.InputBorder.UNDERLINE,on_change=searchByName)
+	add_precio=ft.TextField(label='Precio',border=ft.InputBorder.UNDERLINE)
 	add_unidad=ft.Dropdown(
 		label='Unidad',
-		width=100,
-		value=1,
-		options=[
-			ft.dropdown.Option(text="Kilos",key=1),
-			ft.dropdown.Option(text="Gramos",key=2)
-		],
+		width=200,
 	)
 	add_cantidad=ft.TextField(label='Cantidad',border=ft.InputBorder.UNDERLINE,value=1)
+
+	column_add = ft.Column(scroll=ft.ScrollMode.AUTO,controls=[
+				add_codigo,
+				ft.Column(spacing=0,controls=[
+					add_descp,
+					lista_search_prod,
+					]),
+				add_precio,
+				add_unidad,
+				add_cantidad
+		])		
 
 	modal_addline = ft.AlertDialog(
 		bgcolor = ft.colors.WHITE,
 		modal=True,
 		title=ft.Text('Ingresar Linea',weight=ft.FontWeight.BOLD),
-		content=ft.Column(scroll=ft.ScrollMode.AUTO,width=page.width,controls=[
-				add_codigo,
-				add_descp,
-				add_precio,
-				add_unidad,
-				add_cantidad
-		]),
+		content=column_add,
 		actions=[
 				ft.TextButton("Agregar", on_click=agregarLinea),
 				ft.TextButton("Salir", on_click=lambda _:api.salidModal(modal_addline)),
@@ -368,10 +422,11 @@ def Facturacion(page):
 				tipoFactura,
 				consecutivo,
 				ft.IconButton(
-					icon=ft.icons.SETTINGS,
+					icon=ft.icons.SWITCH_ACCOUNT,
 					icon_color="grey",
 					icon_size=20,
-					tooltip="Ajustes Facturación",
+					tooltip="Factura Especial",
+					on_click=changeSpecial
 				),
 			]
 		),
@@ -402,6 +457,7 @@ def Facturacion(page):
 			totFactura,
 			]),
 		lista_productos,
+		ft.Container(margin= ft.margin.only(top=80),)
 		
 	])
 

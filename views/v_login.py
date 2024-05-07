@@ -38,6 +38,7 @@ def Login(page):
                 (rs['vmemory'],"memory"),
                 (rs['vtu'],"tipousuario"),
                 (rs['vtipoapp'],"tiposucursal"),
+                (rs['vsimplificado'],"simplificado")
             ]
             api.crud('update parametros set value=? where id = ?',datos)
             page.client_storage.set("user",rs['vid'])
@@ -50,7 +51,7 @@ def Login(page):
             #carga async de datos
             api.run(api.load())
 
-            page.go('./')
+            page.go('/'+api.loadMain())
 
     def recover(e):
         page.dialog = dlg_modal

@@ -21,7 +21,10 @@ def Settings(page):
             api.desbloquear(acep_btn,'primary')
             return False
 
-        api.crud("update parametros set value=? where id = ?",[(text_server.value,"server")])
+        rsever =  text_server.value
+        rsever = rsever if rsever.rfind('https') >= 0 else 'http://'+rsever
+         
+        api.crud("update parametros set value=? where id = ?",[(rsever,"server")])
 
         if api.curl() == -1 : 
             ok_save = 0
@@ -45,20 +48,18 @@ def Settings(page):
     btn_sincro = ft.FilledButton(
                 text="Cargar Datos del Servidor",
                 on_click=actualizar,
-                content=ft.ProgressRing(),
             )
 
     r1 = ft.Row(
-        visible=False,
         controls=[
             btn_sincro
         ]
     )
 
-    iduser = api.ejecutar('SELECT value from parametros where id in("iduser","idsucursal") order by id')
+    iduser = api.ejecutar('SELECT value from parametros where id in("iduser") order by id')
 
-    if iduser[0][0] != 0:
-        r1.visible = True
+    if iduser[0][0] == 0:
+        r1.visible = False
 
     view=ft.Column(
         width=page.width*0.8,

@@ -4,6 +4,7 @@ from views.v_login import Login
 from views.v_main import Main
 from views.v_settings import Settings
 from views.v_facturacion import Facturacion
+from views.v_ruta import Ruta
   
 class Router():
   def __init__(self):
@@ -13,13 +14,10 @@ class Router():
   def route_change(self,route):
     _page = route.route.split("?")[0].replace('.','') 
 
-    if _page != '/':
+    if _page != '/login':
       titulo = self.routes[_page]['title']
       self.page.appbar = NavBar(self.page,titulo)
     else:
-      if self.page.client_storage.get("user") == 0:
-        _page = '/login'
-
       self.page.appbar = ''
     
     self.contenedor.gradient = None
@@ -43,4 +41,8 @@ router.routes = {
     "fn":Facturacion,
     "title":'Facturación',
   },
+  "/rutas":{
+    "fn":Ruta,
+    "title":'Ruta',
+  }
 }
