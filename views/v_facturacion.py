@@ -193,7 +193,7 @@ def Facturacion(page):
 		api.bloquear(btn_search)
 
 		rs = api.curl({'cmd':5,'ced':text_cedula.value.replace('-','')})
-		rs = api.getRs(rs['rs'])
+		rs = api.getRs(rs['rs'],0)
 
 		if rs['succed'] == 0:
 			api.alert(rs['error'],'red')
@@ -323,13 +323,13 @@ def Facturacion(page):
 			])
 	]))
 
-	text_cedula = ft.TextField(label='Ingrese el Número de Cédula',on_submit=getSic,width=page.width*0.8)
-	text_correo = ft.TextField(label='Correo',border=ft.InputBorder.UNDERLINE,on_submit=cargarCorreo)
+	text_cedula = ft.TextField(label='Ingrese el Número de Cédula',on_submit=getSic,width=autocomplete.width*0.8)
+	text_correo = ft.TextField(label='Correo',border=ft.InputBorder.UNDERLINE,on_submit=cargarCorreo,width=autocomplete.width*0.8)
 	span_nombre = ft.Text('----',)
 	_credito = ft.Switch(label="Crédito", value=False,on_change=shcred)
-	_plazo = ft.TextField(label='Plazo en Días',border=ft.InputBorder.UNDERLINE,value=0)
-	_lim_cred = ft.TextField(label='Max. Crédito',border=ft.InputBorder.UNDERLINE,value=0)
-	col_cred = ft.Row([
+	_plazo = ft.TextField(label='Plazo en Días',border=ft.InputBorder.UNDERLINE,value=0,width=autocomplete.width*0.8)
+	_lim_cred = ft.TextField(label='Max. Crédito',border=ft.InputBorder.UNDERLINE,value=0,width=autocomplete.width*0.8)
+	col_cred = ft.Column([
 			_plazo,
 			_lim_cred,
 		])
@@ -342,7 +342,7 @@ def Facturacion(page):
 					on_click=getSic
 				)
 
-	correos = ft.Row(
+	correos = ft.Column(
 		controls=[
 			text_correo,
 		]
@@ -351,8 +351,9 @@ def Facturacion(page):
 	modal_cliente = ft.AlertDialog(
 		bgcolor = ft.colors.WHITE,
 		modal=True,
+		content_padding=ft.padding.all(5),
 		title=ft.Text('Ingresar Cliente',weight=ft.FontWeight.BOLD),
-		content=ft.Column(width=page.width,controls=[
+		content=ft.Column(width=page.width,scroll=ft.ScrollMode.AUTO,controls=[
 			ft.Row(
 				alignment=ft.MainAxisAlignment.CENTER,
 				controls=[
@@ -361,11 +362,12 @@ def Facturacion(page):
 				]
 			),
 			ft.Row(
+				alignment=ft.MainAxisAlignment.CENTER,
 				controls=[
-					ft.Text('Razón Social:'),
-					span_nombre,
+					ft.Text('Razón Social'),
 				]
 			),
+			span_nombre,
 			correos,
 			ft.Row(
 				[

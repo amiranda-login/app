@@ -6,37 +6,40 @@ def NavBar(page,titulo):
     info = api.ejecutar('select id,value from parametros where id in("sucname","uname") order by id')
 
     def getBtn(icon,text,tgo):
-        return ft.TextButton(
-            text,
-            icon=icon,
-            icon_color="green400",
+        return ft.MenuItemButton(
+            content=ft.Text(text),
+            leading=ft.Icon(icon),
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=10),
+                #bgcolor={
+                #"":'cyan',
+                #},
+                padding=0,
             ),
             on_click=tgo,
+            width=page.width*0.7,
         )
 
     def ajustes(e):
-        hide_drawer()
-        page.go('/settings')
+        hide_drawer('/settings')
 
     def facturar(e):
-        hide_drawer()
-        page.go('/facturacion')
+        hide_drawer('/facturacion')
 
     def logout(e):
         api.crud("update parametros set value=? where id = ?",[(0,"iduser")])
         page.client_storage.set("user",0)
-        hide_drawer()
-        page.go('/login')
+        hide_drawer('/login')
 
     def show_drawer(e):
+        page.drawer = menu
         menu.open = True
-        page.drawer.update()
-
-    def hide_drawer():
-        menu.open = False
         page.update()
+
+    def hide_drawer(pg):
+        page.drawer.open = False
+        page.update()
+        page.go(pg)
 
     NavBar = ft.AppBar(
             title=ft.Text(titulo),
@@ -81,11 +84,14 @@ def NavBar(page,titulo):
                     facturacion,
                     getBtn(ft.icons.SETTINGS,'Ajustes',ajustes),
                     getBtn(ft.icons.LOGOUT_SHARP,'Cerrar Sesión',logout),
-                    ])
+                    ]),
                 
             ],
         )
-        page.drawer = menu
-        NavBar.leading = ''
+        NavBar.leading = ft.IconButton(
+                    icon=ft.icons.MENU_ROUNDED,
+                    icon_size=20,
+                    on_click=show_drawer
+                )
 
     return NavBar
